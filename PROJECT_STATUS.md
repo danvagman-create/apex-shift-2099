@@ -107,8 +107,9 @@ All content is procedural (code-generated geometry, textures, sound and music).
   - `physics.test.ts`: acceleration, top speed, hover > road top speed, nitro, braking distance, walls, transform timing, car collisions, upgrades.
   - `save.test.ts`: persistence, purchases, migration, records, a full championship flow, ghost encode/replay.
   - `sim.test.ts`: headless race of seven AI on each track. Every car finishes, with **0 respawns** and shortcuts used.
+- **GitHub Actions CI** (typecheck + tests + build on Ubuntu, Node 22): **green** on this branch.
 - `npm run build`: passes. Output is about 1.1 MB JS (≈370 KB gzipped) plus fonts.
-- **Playwright smoke test** (dev server, Low preset, software WebGL): title → menu → garage → setup → race load → countdown → driving → nitro → hover transform → pause → quit all ran without console errors. Screenshots were reviewed for all menus and all three tracks, including the Tokyo tunnel, Canyon bridge and Skyline hover rail.
+- **Playwright smoke test** (`npm run build && npm run smoke`, production bundle served by `vite preview`, Low preset, software WebGL): **PASSED**. Also run against the dev server: title → menu → garage → setup → race load → countdown → driving → nitro → hover transform → pause → quit all ran without console errors. Screenshots were reviewed for all menus and all three tracks, including the Tokyo tunnel, Canyon bridge and Skyline hover rail.
 - **Performance:** _not measured on real GPU hardware._ Only SwiftShader software rendering was available here, at a few FPS. Renderer stats at Medium with eight cars: ~540–650 draw calls across all passes (shadow + main + post) and ~0.7–0.9 M triangles. Real-hardware FPS for each preset still needs to be measured on a Windows gaming PC.
 - Audio runs without errors, but could not be listened to in this headless environment.
 
