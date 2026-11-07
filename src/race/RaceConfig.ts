@@ -13,6 +13,8 @@ export interface RaceConfig {
   playerUpgrades: UpgradeLevels;
   cupId?: string;
   seed?: number;
+  /** Explicit rival ids (championship keeps the same field every round). */
+  rivalIds?: string[];
 }
 
 export interface DriverProfile {

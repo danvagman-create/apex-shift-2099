@@ -283,8 +283,11 @@ export class VehiclePhysics {
         if (vf > 0.5) a -= brakeDecel * brakeIn;
         else if (vf > -16) a -= 8 * brakeIn;
       }
-      const aero = (m > 0.5 ? 0.00042 : 0.00058) * (1 - this.draft * 0.4);
-      let resist = aero * vf * Math.abs(vf) + Math.sign(vf) * (0.35 + (input.throttle < 0.05 && brakeIn < 0.05 ? 1.4 : 0));
+      // Under power the cubic thrust taper already models aero limits (so the spec top speed is
+      // reached); full aero drag + engine braking apply when lifting off.
+      const coasting = input.throttle < 0.05;
+      const aero = (m > 0.5 ? 0.00042 : 0.00058) * (1 - this.draft * 0.4) * (coasting ? 1 : 0.12);
+      let resist = aero * vf * Math.abs(vf) + Math.sign(vf) * (0.35 + (coasting && brakeIn < 0.05 ? 1.4 : 0));
       if (vf > cap) resist += (vf - cap) * 1.2;
       if (this.drifting) resist += Math.sign(vf) * Math.abs(Math.sin(this.slip)) * 4.5;
       a -= resist;

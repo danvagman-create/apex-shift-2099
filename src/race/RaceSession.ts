@@ -96,10 +96,12 @@ export class RaceSession {
     const withPlayer = opts.withPlayer ?? true;
     const rng = new Rng(config.seed ?? 1234);
     const opponents = config.mode === 'timetrial' ? 0 : clamp(config.opponents, 0, 7);
-    const total = opponents + (withPlayer ? 1 : 0);
+    const total = Math.min(opponents, config.rivalIds ? config.rivalIds.length : opponents) + (withPlayer ? 1 : 0);
     // Player starts at the back-ish (position per mode), AI fill the grid.
     const playerSlot = withPlayer ? (config.mode === 'timetrial' ? 0 : Math.min(total - 1, Math.max(0, total - 1 - (config.mode === 'championship' ? 1 : 0)))) : -1;
-    const rivals = shuffled(RIVALS, rng).slice(0, opponents);
+    const rivals = config.rivalIds
+      ? config.rivalIds.map((id) => RIVALS.find((r) => r.id === id)).filter((r): r is DriverProfile => !!r).slice(0, opponents)
+      : shuffled(RIVALS, rng).slice(0, opponents);
     let r = 0;
     for (let slot = 0; slot < total; slot++) {
       const isPlayer = slot === playerSlot;
