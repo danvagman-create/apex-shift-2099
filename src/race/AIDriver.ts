@@ -111,25 +111,26 @@ export class AIDriver {
     const preferHover: Uint8Array[] = [];
     for (const line of this.ai.lines) {
       const r = line.speedProfile(sp.grip * 0.96, sp.accel, sp.brake * 0.82, sp.maxSpeed);
-      const h = line.speedProfile(sp.hoverGrip * 1.05, sp.hoverAccel, sp.hoverBrake * 0.85, sp.hoverMaxSpeed);
+      const h = line.speedProfile(sp.hoverGrip * 0.88, sp.hoverAccel, sp.hoverBrake * 0.8, sp.hoverMaxSpeed);
       road.push(r);
       hover.push(h);
       const n = r.length;
       const pref = new Uint8Array(n);
-      const win = Math.round(380 / line.path.spacing);
-      const raw = new Float32Array(n);
-      for (let i = 0; i < n; i++) raw[i] = h[i] * this.traits.hoverBias - r[i];
+      const ds = line.path.spacing;
+      const win = Math.round(420 / ds);
+      // Per-sample time difference (s): positive when hover is quicker through that sample.
+      const gain = new Float32Array(n);
+      for (let i = 0; i < n; i++) gain[i] = ds / Math.max(5, r[i]) - ds / Math.max(5, h[i]);
+      // Prefer hover when it saves more than the cost of transforming over the upcoming window.
+      // hoverBias > 1 lowers the threshold (hover-loving personalities).
+      const threshold = 0.32 / this.traits.hoverBias;
       for (let i = 0; i < n; i++) {
-        // Hover is preferred if, over the upcoming window, it is not slower anywhere by much
-        // and is faster on average.
         let sum = 0;
-        let worst = Infinity;
-        for (let k = 0; k < win; k += 3) {
+        for (let k = 0; k < win; k++) {
           const j = line.path.closed ? mod(i + k, n) : Math.min(n - 1, i + k);
-          sum += raw[j];
-          worst = Math.min(worst, raw[j]);
+          sum += gain[j];
         }
-        pref[i] = sum / (win / 3) > 1.2 && worst > -9 ? 1 : 0;
+        pref[i] = sum > threshold ? 1 : sum < -threshold ? 0 : 2; // 2 = keep current mode
       }
       if (line.path.hoverOnly) pref.fill(1);
       preferHover.push(pref);
@@ -190,7 +191,8 @@ export class AIDriver {
     }
 
     // ---- shortcut decision -------------------------------------------------
-    let wantHover = this.profiles.preferHover[pi][idx] === 1;
+    const prefMode = this.profiles.preferHover[pi][idx];
+    let wantHover = prefMode === 2 ? car.targetHover : prefMode === 1;
     let lateralTarget = line.offset[ahead(4)] * lerp(0.75, 1, this.traits.lineFollow) + this.offsetBias;
     let entering = false;
     if (pi === 0) {
@@ -254,20 +256,20 @@ export class AIDriver {
       const dLat = lat - proj.lateral;
       if (ds > 0) {
         // car ahead
-        const closing = v - Math.max(0, o.speed);
-        if (Math.abs(dLat) < this.traits.passGap && ds < 8 + Math.max(0, closing) * 1.6) {
+        const closing = Math.max(v, targetV) - Math.max(0, o.speed);
+        if (Math.abs(dLat) < this.traits.passGap && ds < 10 + Math.max(0, closing) * 1.8) {
           const half = proj.width / 2 - 2;
           const spaceL = lat + half; // room on the left (negative lateral)
           const spaceR = half - lat;
           const dir = spaceR > spaceL ? 1 : -1;
           const room = Math.max(spaceL, spaceR);
-          if (room > this.traits.passGap && this.traits.passEagerness > 0.3) {
-            avoid += dir * (this.traits.passGap - Math.abs(dLat)) * 1.2;
-          } else if (ds < 14) {
+          if (room > this.traits.passGap * 0.85 && this.traits.passEagerness > 0.3) {
+            avoid += dir * (this.traits.passGap + 0.6 - Math.abs(dLat)) * 1.5;
+          } else if (ds < 12) {
             followSpeed = Math.min(followSpeed, Math.max(0, o.speed) - (this.personality === 'aggressive' ? -2 : 1));
           }
         }
-        if (ds < 6 && Math.abs(dLat) < 2.4) followSpeed = Math.min(followSpeed, Math.max(0, o.speed) - 1.5);
+        if (ds < 5.5 && Math.abs(dLat) < 2.2) followSpeed = Math.min(followSpeed, Math.max(0, o.speed) - 0.5);
       } else {
         // car behind / alongside
         if (Math.abs(ds) < 5 && Math.abs(dLat) < 3.2) avoid -= Math.sign(dLat || 1) * (3.2 - Math.abs(dLat)) * 0.8;
@@ -277,7 +279,7 @@ export class AIDriver {
         }
       }
     }
-    this.avoidOffset = damp(this.avoidOffset, avoid, 2.2, dt);
+    this.avoidOffset = damp(this.avoidOffset, avoid, 3.2, dt);
     lateralTarget += this.avoidOffset;
     if (this.mistake === 'wide') lateralTarget += -Math.sign(line.signedCurvature[ahead(20)] || 1) * 3;
     const halfW = entering ? proj.width / 2 + 3 : proj.width / 2 - 1.6;

@@ -271,7 +271,7 @@ export function buildTrackMeshes(track: Track, themeName: string, cfg: GraphicsC
     add(sweep(main, prof, tunnelRuns, 12), tunnelMat, { shadow: true });
     // continuous ceiling light strips + periodic light bars for strong speed sensation
     const lightCol = theme.tunnel === 'rock' ? '#ffb060' : '#e8f2ff';
-    const stripMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(lightCol).multiplyScalar(2.4), toneMapped: false, side: THREE.DoubleSide });
+    const stripMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(lightCol).multiplyScalar(1.1), toneMapped: false, side: THREE.DoubleSide });
     for (const side of [-1, 1] as const) {
       add(sweep(main, [{ edge: side, off: -side * 3.4, h: H - 0.05, u: 0 }, { edge: side, off: -side * 3.0, h: H - 0.05, u: 1 }], tunnelRuns, 10), stripMat);
     }
@@ -289,7 +289,7 @@ export function buildTrackMeshes(track: Track, themeName: string, cfg: GraphicsC
         bars.push(m4.clone());
       }
     }
-    const inst = new THREE.InstancedMesh(barGeo, new THREE.MeshBasicMaterial({ color: new THREE.Color(theme.tunnel === 'rock' ? '#ff9a40' : '#bfe6ff').multiplyScalar(2.2), toneMapped: false }), bars.length);
+    const inst = new THREE.InstancedMesh(barGeo, new THREE.MeshBasicMaterial({ color: new THREE.Color(theme.tunnel === 'rock' ? '#ff9a40' : '#bfe6ff').multiplyScalar(1.3), toneMapped: false }), bars.length);
     bars.forEach((m, i) => inst.setMatrixAt(i, m));
     group.add(inst);
     disposables.push(barGeo, inst.material as THREE.Material);

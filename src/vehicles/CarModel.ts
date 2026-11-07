@@ -515,7 +515,7 @@ export class CarModel extends THREE.Group {
   private buildWheels(): void {
     const st = this.style;
     const sh = sharedCarMaterials();
-    const lod = this.opts.lod === 'low' ? 'low' : 'high';
+    const lod = this.opts.lod === 'high' ? 'high' : 'low';
     const tire = this.track(tireGeometry(st.wheelRadius, st.tireWidth, lod));
     const rim = this.track(rimGeometry(st.wheelRadius, st.tireWidth, st.rim, lod));
     const disc = new THREE.CylinderGeometry(st.wheelRadius * 0.56, st.wheelRadius * 0.56, 0.03, 24);
