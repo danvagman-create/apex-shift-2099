@@ -22,9 +22,9 @@ export function buildSkyline2099(track: Track, cfg: GraphicsConfig): Scenery {
     uniforms: {
       uTime: { value: 0 },
       uSunDir: { value: new THREE.Vector3(0.55, 0.22, -0.8).normalize() },
-      uTop: { value: new THREE.Color('#fff4e6') },
-      uShade: { value: new THREE.Color('#a9b6cf') },
-      uFog: { value: new THREE.Color('#f6cfa2') },
+      uTop: { value: new THREE.Color('#f3e6d6') },
+      uShade: { value: new THREE.Color('#7f8aa3') },
+      uFog: { value: new THREE.Color('#e7b98c') },
     },
     vertexShader: /* glsl */ `varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position,1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
     fragmentShader: /* glsl */ `
@@ -80,8 +80,8 @@ export function buildSkyline2099(track: Track, cfg: GraphicsConfig): Scenery {
   group.add(puffMesh);
 
   // ---- arcology towers
-  const glassMat = buildingMaterial({ color: '#2a3c55', roughness: 0.08, metalness: 0.95, windowIntensity: 0.35, litFraction: 0.35, cool: '#cfe8ff', accent: '#0a5c80', cell: [2.6, 4.2] });
-  const whiteMat = buildingMaterial({ color: '#d9dee6', roughness: 0.3, metalness: 0.35, windowIntensity: 0.25, litFraction: 0.3, accent: '#2a8cff', cell: [4, 5] });
+  const glassMat = buildingMaterial({ color: '#1e2c40', roughness: 0.1, metalness: 0.95, windowIntensity: 0.3, litFraction: 0.3, cool: '#cfe8ff', accent: '#06304a', cell: [2.6, 4.2] });
+  const whiteMat = buildingMaterial({ color: '#8f99a8', roughness: 0.35, metalness: 0.55, windowIntensity: 0.2, litFraction: 0.3, accent: '#0d3a6e', cell: [4, 5] });
   const boxGeo = new THREE.BoxGeometry(1, 1, 1);
   boxGeo.translate(0, 0.5, 0);
   const cylGeo = new THREE.CylinderGeometry(0.5, 0.5, 1, 20);

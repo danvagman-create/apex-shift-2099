@@ -3,7 +3,7 @@ import { clamp, fbm2, lerp, Rng, smoothstep } from '../../core/utils';
 import type { GraphicsConfig } from '../../core/Settings';
 import type { Track } from '../Track';
 import { F_BRIDGE, F_TUNNEL } from '../TrackLayout';
-import { rockTexture } from '../../graphics/TextureFactory';
+import { detailTexture, rockTexture } from '../../graphics/TextureFactory';
 import { disposeGroup, instanced, trs, TrackSpatialIndex, type Scenery } from './common';
 
 export function buildRedlineCanyon(track: Track, cfg: GraphicsConfig): Scenery {
@@ -17,7 +17,7 @@ export function buildRedlineCanyon(track: Track, cfg: GraphicsConfig): Scenery {
   const maxX = b.max.x + margin;
   const minZ = b.min.z - margin;
   const maxZ = b.max.z + margin;
-  const res = Math.round(clamp(260 * Math.sqrt(cfg.scenery), 140, 340));
+  const res = Math.round(clamp(330 * Math.sqrt(cfg.scenery), 200, 420));
   const sizeX = maxX - minX;
   const sizeZ = maxZ - minZ;
   const geo = new THREE.PlaneGeometry(sizeX, sizeZ, res, res);
@@ -42,12 +42,13 @@ export function buildRedlineCanyon(track: Track, cfg: GraphicsConfig): Scenery {
     let wall = 0;
     if (n) {
       const yt = n.sample.pos.y;
-      const e = n.d - (n.sample.width / 2 + 7);
+      // Flat valley floor wide enough that no terrain triangle can rise over the road.
+      const e = n.d - (n.sample.width / 2 + 7) - Math.max(16, (sizeX / res) * 1.6);
       const deep = (n.sample.flags & F_BRIDGE) !== 0 || n.path.hoverOnly;
       const tunnel = (n.sample.flags & F_TUNNEL) !== 0;
       const wallH = (tunnel ? 70 : 45) + 70 * (0.5 + 0.5 * fbm2(x * 0.004, z * 0.004, 3));
       const rise = smoothstep(0, tunnel ? 14 : 30 + 40 * (0.5 + 0.5 * fbm2(x * 0.01, z * 0.01, 2)), e);
-      const canyon = yt - 0.9 + rise * wallH + fbm2(x * 0.03, z * 0.03, 3) * 3 * rise;
+      const canyon = yt - 1.2 + rise * wallH + fbm2(x * 0.03, z * 0.03, 3) * 3 * rise;
       if (deep) {
         // abyss below bridges and the hover jump
         const gorgeW = n.path.hoverOnly ? 45 : 70;
@@ -60,7 +61,7 @@ export function buildRedlineCanyon(track: Track, cfg: GraphicsConfig): Scenery {
         }
       } else {
         y = lerp(canyon, Math.max(y, canyon * 0.6 + y * 0.4), smoothstep(200, 420, n.d));
-        if (e < 0) y = yt - 0.9;
+        if (e < 0) y = yt - 1.2;
       }
       wall = rise;
     }
@@ -77,9 +78,9 @@ export function buildRedlineCanyon(track: Track, cfg: GraphicsConfig): Scenery {
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   geo.computeVertexNormals();
   const rock = rockTexture();
-  const tex = rock.clone();
+  const tex = detailTexture().clone();
   tex.needsUpdate = true;
-  tex.repeat.set(sizeX / 40, sizeZ / 40);
+  tex.repeat.set(sizeX / 30, sizeZ / 30);
   const terrainMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0.0, map: tex, color: '#ffffff' });
   const terrain = new THREE.Mesh(geo, terrainMat);
   terrain.receiveShadow = true;

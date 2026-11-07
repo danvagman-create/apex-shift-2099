@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import { mod } from '../core/utils';
 import type { GraphicsConfig } from '../core/Settings';
-import { Track, TrackPath, type TrackSample } from './Track';
+import { Track, TrackPath, TrackProjection, type TrackSample } from './Track';
 import { F_BRIDGE, F_ELEVATED, F_TUNNEL } from './TrackLayout';
-import { billboardTexture, checkerTexture, hexTexture, noiseNormal, roadRoughness, roadTexture, rockTexture } from '../graphics/TextureFactory';
+import { billboardTexture, checkerTexture, hexTexture, noiseNormal, roadMarkings, roadRoughness, roadTexture, rockTexture } from '../graphics/TextureFactory';
 
 export interface ProfilePt {
   edge: -1 | 0 | 1; // anchor: left edge, center, right edge
@@ -81,7 +81,7 @@ export function sweep(path: TrackPath, profile: ProfilePt[], ranges: [number, nu
       if (k > a) {
         const r0 = base + (k - a - 1) * P;
         const r1 = base + (k - a) * P;
-        for (let j = 0; j < P - 1; j++) idx.push(r0 + j, r1 + j, r0 + j + 1, r0 + j + 1, r1 + j, r1 + j + 1);
+        for (let j = 0; j < P - 1; j++) idx.push(r0 + j, r0 + j + 1, r1 + j, r0 + j + 1, r1 + j + 1, r1 + j);
       }
     }
   }
@@ -182,9 +182,24 @@ export function buildTrackMeshes(track: Track, themeName: string, cfg: GraphicsC
     normalMap: noiseNormal('asphalt', 256, 1.6, 8, 1),
     normalScale: new THREE.Vector2(0.18, 0.18),
     envMapIntensity: themeName === 'tokyo' ? 0.75 : 0.45,
+    emissive: '#ffffff',
+    emissiveMap: roadMarkings(themeName),
+    emissiveIntensity: themeName === 'tokyo' ? 0.32 : 0.08,
   });
   const roadGeo = sweepFraction(main, 6, 24);
   add(roadGeo, roadMat, { shadow: true });
+
+  // lane dashes as real geometry (texture dashes vanish at grazing angles due to mipmapping)
+  const lanes = themeName === 'canyon' ? 3 : 4;
+  const dashMat = new THREE.MeshStandardMaterial({
+    color: themeName === 'canyon' ? '#f3e2c8' : '#eef3ff',
+    roughness: 0.5,
+    emissive: themeName === 'skyline' ? '#7fe9ff' : '#ffffff',
+    emissiveIntensity: themeName === 'tokyo' ? 0.55 : themeName === 'skyline' ? 0.6 : 0.12,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+  });
+  add(laneDashes(main, lanes, 4, 12), dashMat, { shadow: true });
 
   // shoulders (dark strips outside edges up to the walls)
   const shoulderMat = new THREE.MeshStandardMaterial({ color: theme.slabColor, roughness: 0.85, metalness: 0.1 });
@@ -197,7 +212,7 @@ export function buildTrackMeshes(track: Track, themeName: string, cfg: GraphicsC
   const edgeMat1 = new THREE.MeshBasicMaterial({ color: new THREE.Color(theme.edgeColor).multiplyScalar(2.2), toneMapped: false });
   const edgeMat2 = new THREE.MeshBasicMaterial({ color: new THREE.Color(theme.edgeColor2).multiplyScalar(2.2), toneMapped: false });
   for (const side of [-1, 1] as const) {
-    const prof: ProfilePt[] = [{ edge: side, off: -side * 0.32, h: 0.02, u: 0 }, { edge: side, off: -side * 0.2, h: 0.02, u: 1 }];
+    const prof: ProfilePt[] = side < 0 ? [{ edge: -1, off: 0.2, h: 0.02, u: 0 }, { edge: -1, off: 0.32, h: 0.02, u: 1 }] : [{ edge: 1, off: -0.32, h: 0.02, u: 0 }, { edge: 1, off: -0.2, h: 0.02, u: 1 }];
     add(sweep(main, prof, runs(main, () => true), 10), side < 0 ? edgeMat1 : edgeMat2);
   }
 
@@ -216,7 +231,7 @@ export function buildTrackMeshes(track: Track, themeName: string, cfg: GraphicsC
   for (const b of track.branches) buildWalls(b, theme, W, add, animated, true);
 
   // ---------------------------------------------------------------- slab underside (elevated)
-  const slabMat = new THREE.MeshStandardMaterial({ color: theme.slabColor, roughness: 0.7, metalness: 0.3 });
+  const slabMat = new THREE.MeshStandardMaterial({ color: theme.slabColor, roughness: 0.7, metalness: 0.3, side: THREE.DoubleSide });
   const allSlab = themeName === 'skyline';
   const slabRuns = runs(main, (_i, s) => allSlab || (s.flags & (F_ELEVATED | F_BRIDGE)) !== 0);
   if (slabRuns.length) {
@@ -231,7 +246,7 @@ export function buildTrackMeshes(track: Track, themeName: string, cfg: GraphicsC
     ];
     add(sweep(main, prof, slabRuns, 10), slabMat);
     // underside light strips
-    const ul = new THREE.MeshBasicMaterial({ color: new THREE.Color(theme.edgeColor2).multiplyScalar(1.6), toneMapped: false });
+    const ul = new THREE.MeshBasicMaterial({ color: new THREE.Color(theme.edgeColor2).multiplyScalar(1.6), toneMapped: false, side: THREE.DoubleSide });
     for (const side of [-1, 1] as const) {
       add(sweep(main, [{ edge: side, off: -side * 1.2, h: -depth * 0.6 - 0.02, u: 0 }, { edge: side, off: -side * 1.6, h: -depth * 0.62 - 0.02, u: 1 }], slabRuns, 10), ul);
     }
@@ -256,7 +271,7 @@ export function buildTrackMeshes(track: Track, themeName: string, cfg: GraphicsC
     add(sweep(main, prof, tunnelRuns, 12), tunnelMat, { shadow: true });
     // continuous ceiling light strips + periodic light bars for strong speed sensation
     const lightCol = theme.tunnel === 'rock' ? '#ffb060' : '#e8f2ff';
-    const stripMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(lightCol).multiplyScalar(2.4), toneMapped: false });
+    const stripMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(lightCol).multiplyScalar(2.4), toneMapped: false, side: THREE.DoubleSide });
     for (const side of [-1, 1] as const) {
       add(sweep(main, [{ edge: side, off: -side * 3.4, h: H - 0.05, u: 0 }, { edge: side, off: -side * 3.0, h: H - 0.05, u: 1 }], tunnelRuns, 10), stripMat);
     }
@@ -374,6 +389,38 @@ export function buildTrackMeshes(track: Track, themeName: string, cfg: GraphicsC
   };
 }
 
+/** Dashed lane separators: quads of length `len` every `period` meters. */
+function laneDashes(path: TrackPath, lanes: number, len: number, period: number): THREE.BufferGeometry {
+  const pos: number[] = [];
+  const nrm: number[] = [];
+  const idx: number[] = [];
+  const f = new TrackProjection();
+  const p = new THREE.Vector3();
+  const hw = 0.11;
+  for (let s = 0; s < path.length - len; s += period) {
+    for (let l = 1; l < lanes; l++) {
+      const base = pos.length / 3;
+      for (const ds of [0, len]) {
+        path.frameAt(s + ds, f);
+        const lat = (l / lanes - 0.5) * f.width;
+        for (const o of [-hw, hw]) {
+          p.copy(f.pos).addScaledVector(f.right, lat + o).addScaledVector(f.up, 0.015);
+          pos.push(p.x, p.y, p.z);
+          nrm.push(f.up.x, f.up.y, f.up.z);
+        }
+      }
+      // rows: [start-left, start-right, end-left, end-right] -> faces up
+      idx.push(base, base + 1, base + 2, base + 1, base + 3, base + 2);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+  g.setIndex(idx);
+  g.computeBoundingSphere();
+  return g;
+}
+
 /** Road surface with u spanning the full width, subdivided laterally. */
 function sweepFraction(path: TrackPath, sub: number, vScale: number): THREE.BufferGeometry {
   const pos: number[] = [];
@@ -394,7 +441,7 @@ function sweepFraction(path: TrackPath, sub: number, vScale: number): THREE.Buff
     if (k > 0) {
       const r0 = (k - 1) * (sub + 1);
       const r1 = k * (sub + 1);
-      for (let j = 0; j < sub; j++) idx.push(r0 + j, r1 + j, r0 + j + 1, r0 + j + 1, r1 + j, r1 + j + 1);
+      for (let j = 0; j < sub; j++) idx.push(r0 + j, r0 + j + 1, r1 + j, r0 + j + 1, r1 + j + 1, r1 + j);
     }
   }
   const g = new THREE.BufferGeometry();
@@ -441,11 +488,11 @@ function buildWalls(
         { edge: side, off: o + side * 0.4, h: 0, u: 1 },
       ];
       add(sweep(path, side < 0 ? [...prof].reverse() : prof, wr, 6), mat, { shadow: true });
-      const glow = new THREE.MeshBasicMaterial({ color: new THREE.Color(theme.wallGlow).multiplyScalar(2.6), toneMapped: false });
+      const glow = new THREE.MeshBasicMaterial({ color: new THREE.Color(theme.wallGlow).multiplyScalar(2.6), toneMapped: false, side: THREE.DoubleSide });
       add(sweep(path, [{ edge: side, off: o - side * 0.01, h: H * 0.72, u: 0 }, { edge: side, off: o - side * 0.01, h: H * 0.8, u: 1 }], wr, 6), glow);
     } else {
       // guardrail: posts + rail band
-      const mat = new THREE.MeshStandardMaterial({ color: theme.wallColor, roughness: 0.35, metalness: 0.85 });
+      const mat = new THREE.MeshStandardMaterial({ color: theme.wallColor, roughness: 0.35, metalness: 0.85, side: THREE.DoubleSide });
       const prof: ProfilePt[] = [
         { edge: side, off: o, h: H * 0.35, u: 0 },
         { edge: side, off: o - side * 0.08, h: H * 0.55, u: 0.5 },
@@ -456,8 +503,8 @@ function buildWalls(
         { edge: side, off: o + side * 0.1, h: 0, u: 0 },
         { edge: side, off: o + side * 0.1, h: H * 0.85, u: 1 },
       ];
-      add(sweep(path, side < 0 ? backProf : [...backProf].reverse(), wr, 6), new THREE.MeshStandardMaterial({ color: '#3c3a38', roughness: 0.9 }));
-      const glow = new THREE.MeshBasicMaterial({ color: new THREE.Color(theme.wallGlow).multiplyScalar(2.2), toneMapped: false });
+      add(sweep(path, side < 0 ? backProf : [...backProf].reverse(), wr, 6), new THREE.MeshStandardMaterial({ color: '#3c3a38', roughness: 0.9, side: THREE.DoubleSide }));
+      const glow = new THREE.MeshBasicMaterial({ color: new THREE.Color(theme.wallGlow).multiplyScalar(2.2), toneMapped: false, side: THREE.DoubleSide });
       add(sweep(path, [{ edge: side, off: o - side * 0.09, h: H * 0.52, u: 0 }, { edge: side, off: o - side * 0.09, h: H * 0.58, u: 1 }], wr, 6), glow);
     }
   }

@@ -78,7 +78,22 @@ export class Game {
       if (document.hidden && this.state === 'race') this.pause();
     });
     this.applyAudioSettings();
-    this.showTitle();
+    const dev = new URLSearchParams(location.search);
+    if (dev.get('race')) {
+      // Developer shortcut: ?race=<trackId>&car=<id>&opp=<n>&at=<meters>&hover=1
+      void this.startRace({
+        mode: 'quick',
+        trackId: dev.get('race')!,
+        laps: 3,
+        opponents: Number(dev.get('opp') ?? 7),
+        difficulty: 'normal',
+        playerCar: dev.get('car') ?? this.save.data.selectedCar,
+        playerUpgrades: { engine: 0, nitro: 0, handling: 0, hover: 0 },
+        seed: 3,
+      }).then(() => {
+        if (dev.has('at') && this.race) this.race.debugJump(Number(dev.get('at')), dev.get('hover') === '1');
+      });
+    } else this.showTitle();
   }
 
   start(): void {
@@ -91,6 +106,10 @@ export class Game {
     requestAnimationFrame(loop);
     (window as unknown as { __ready: boolean }).__ready = true;
     (window as unknown as { __game: Game }).__game = this;
+    (window as unknown as { __capture: () => string }).__capture = () => {
+      this.ctx.render(1 / 60);
+      return this.ctx.canvas.toDataURL('image/jpeg', 0.9);
+    };
   }
 
   private frame(dt: number): void {

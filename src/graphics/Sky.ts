@@ -17,7 +17,7 @@ export interface SkyColors {
 export const SKY_PRESETS: Record<SkyTheme, SkyColors> = {
   tokyo: { top: '#020309', horizon: '#1b1030', bottom: '#040406', glow: '#4a1650', sun: '#9fb8ff', sunDir: [0.4, 0.45, -0.8], sunSize: 0.35, stars: 0.35, clouds: 0.25 },
   canyon: { top: '#24306a', horizon: '#ff8a3d', bottom: '#3a1d14', glow: '#ffb070', sun: '#ffd9a0', sunDir: [-0.6, 0.08, -0.79], sunSize: 1.2, stars: 0.0, clouds: 0.35 },
-  skyline: { top: '#2a63c9', horizon: '#f6cfa2', bottom: '#e9dccf', glow: '#ffd7a8', sun: '#fff1d0', sunDir: [0.55, 0.22, -0.8], sunSize: 1.0, stars: 0.0, clouds: 0.6 },
+  skyline: { top: '#1d4fae', horizon: '#e7b98c', bottom: '#c9b8a8', glow: '#f0b98a', sun: '#fff1d0', sunDir: [0.55, 0.22, -0.8], sunSize: 0.8, stars: 0.0, clouds: 0.55 },
   showroom: { top: '#07080b', horizon: '#0e1016', bottom: '#050506', glow: '#101522', sun: '#ffffff', sunDir: [0, 1, 0], sunSize: 0, stars: 0, clouds: 0 },
 };
 

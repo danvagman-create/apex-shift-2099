@@ -71,8 +71,8 @@ interface RaceVehicle {
 
 const THEME_LIGHT: Record<string, { hemiSky: string; hemiGround: string; hemi: number; sun: string; sunI: number; fog: string; fogD: number; exposure: number; bloom: [number, number, number]; env: number }> = {
   tokyo: { hemiSky: '#3a3070', hemiGround: '#07070c', hemi: 0.55, sun: '#9fb8ff', sunI: 0.7, fog: '#0c0a1e', fogD: 0.0016, exposure: 1.05, bloom: [1.0, 0.55, 0.78], env: 0.9 },
-  canyon: { hemiSky: '#9fb4ff', hemiGround: '#7a3a20', hemi: 0.9, sun: '#ffc890', sunI: 3.2, fog: '#e6a274', fogD: 0.00042, exposure: 0.95, bloom: [0.45, 0.4, 0.95], env: 0.8 },
-  skyline: { hemiSky: '#bcd6ff', hemiGround: '#f0d2b0', hemi: 1.0, sun: '#fff1d8', sunI: 3.0, fog: '#f2cfa6', fogD: 0.00022, exposure: 0.92, bloom: [0.45, 0.4, 0.95], env: 1.0 },
+  canyon: { hemiSky: '#a9bcff', hemiGround: '#8a4a2a', hemi: 1.1, sun: '#ffd2a0', sunI: 3.0, fog: '#e6a274', fogD: 0.00038, exposure: 1.0, bloom: [0.35, 0.4, 1.25], env: 0.8 },
+  skyline: { hemiSky: '#9fc0f0', hemiGround: '#c8a888', hemi: 0.8, sun: '#fff1d8', sunI: 2.4, fog: '#e9c8a4', fogD: 0.00022, exposure: 0.8, bloom: [0.3, 0.35, 1.35], env: 0.85 },
 };
 
 export class RaceScene {
@@ -97,6 +97,9 @@ export class RaceScene {
   private hud!: HUD;
   private cube: { cam: THREE.CubeCamera; rt: THREE.WebGLCubeRenderTarget } | null = null;
   private frame = 0;
+  get frameCount(): number {
+    return this.frame;
+  }
   private time = 0;
   phase: 'intro' | 'race' | 'finished' | 'done' = 'intro';
   private finishTimer = 0;
@@ -196,10 +199,10 @@ export class RaceScene {
     if (cfg.shadows) {
       this.sun.shadow.mapSize.set(cfg.shadowMapSize, cfg.shadowMapSize);
       const sc = this.sun.shadow.camera;
-      sc.left = -70;
-      sc.right = 70;
-      sc.top = 70;
-      sc.bottom = -70;
+      sc.left = -48;
+      sc.right = 48;
+      sc.top = 48;
+      sc.bottom = -48;
       sc.near = 10;
       sc.far = 500;
       this.sun.shadow.bias = -0.0004;
@@ -289,6 +292,23 @@ export class RaceScene {
     this.hud.show();
     this.svc.ctx.setScene(this.scene, this.rig.camera);
     this.svc.ctx.resize();
+  }
+
+  /** Developer helper: skip the countdown and drop the field at main-track distance s. */
+  debugJump(s: number, hover: boolean): void {
+    const ss = this.session;
+    ss.countdown = 0.001;
+    ss.racers.forEach((r, i) => {
+      const off = i === ss.playerIndex ? 0 : 12 + i * 9;
+      const p = r.physics;
+      p.setHoverImmediate(hover && i === ss.playerIndex);
+      p.placeAt(s + off, ((i % 3) - 1) * 4, 0, 55);
+      p.frozen = false;
+      r.lastMainS = p.proj.s;
+      r.progress = p.proj.s;
+      r.lapsCompleted = 0;
+    });
+    this.rig.reset(this.playerRacer.physics);
   }
 
   cycleCamera(): void {

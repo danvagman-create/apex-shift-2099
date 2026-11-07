@@ -57,6 +57,7 @@ export class RenderContext {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.domElement.id = 'game-canvas';
+    this.renderer.info.autoReset = false;
     container.appendChild(this.renderer.domElement);
     window.addEventListener('resize', () => this.resize());
     this.applyQuality(preset);
@@ -162,6 +163,7 @@ export class RenderContext {
   render(dt: number): void {
     if (!this.scene || !this.camera) return;
     this.time += dt;
+    this.renderer.info.reset();
     if (this.composer && this.speedPass) {
       const u = this.speedPass.uniforms;
       u.uStrength.value = this.fx.strength;

@@ -93,12 +93,6 @@ export function roadTexture(theme: string): THREE.CanvasTexture {
     ctx.fillStyle = st.edge;
     ctx.fillRect(W * 0.025, 0, W * 0.012, H);
     ctx.fillRect(W * 0.963, 0, W * 0.012, H);
-    // lane dashes
-    ctx.fillStyle = st.line;
-    for (let l = 1; l < st.lanes; l++) {
-      const x = (W * l) / st.lanes - 3;
-      for (let y = 0; y < H; y += 256) ctx.fillRect(x, y + 20, 6, 120);
-    }
     return tex(c);
   });
 }
@@ -277,6 +271,44 @@ export function hexTexture(): THREE.CanvasTexture {
         ctx.closePath();
         ctx.stroke();
       }
+    return tex(c);
+  });
+}
+
+/** Neutral gray detail texture (multiplies vertex colors on terrain). */
+export function detailTexture(): THREE.CanvasTexture {
+  return cached('detail', () => {
+    const S = 512;
+    const [c, ctx] = canvas(S, S);
+    speckle(ctx, S, S, [205, 205, 205], 50, 41);
+    const rng = new Rng(19);
+    for (let i = 0; i < 900; i++) {
+      ctx.fillStyle = `rgba(${rng.chance(0.5) ? '255,255,255' : '0,0,0'},${rng.range(0.03, 0.09)})`;
+      ctx.beginPath();
+      ctx.ellipse(rng.range(0, S), rng.range(0, S), rng.range(4, 40), rng.range(2, 12), rng.range(0, 3), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    return tex(c);
+  });
+}
+
+/** Lane markings only (white on black) – used as an emissive map so paint reads at night. */
+export function roadMarkings(theme: string): THREE.CanvasTexture {
+  return cached(`roadE-${theme}`, () => {
+    const st = ROAD_STYLES[theme] ?? ROAD_STYLES.tokyo;
+    const W = 512;
+    const H = 1024;
+    const [c, ctx] = canvas(W, H);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = st.edge;
+    ctx.fillRect(W * 0.025, 0, W * 0.012, H);
+    ctx.fillRect(W * 0.963, 0, W * 0.012, H);
+    ctx.fillStyle = st.line;
+    for (let l = 1; l < st.lanes; l++) {
+      const x = (W * l) / st.lanes - 3;
+      for (let y = 0; y < H; y += 256) ctx.fillRect(x, y + 20, 6, 120);
+    }
     return tex(c);
   });
 }

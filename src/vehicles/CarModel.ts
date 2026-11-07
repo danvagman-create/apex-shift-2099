@@ -149,13 +149,42 @@ export class CarModel extends THREE.Group {
     surfacePoint(st, 0.05, 0.45, 1, this.headlightAnchor);
     this.headlightAnchor.x = 0;
 
+    this.mergeStatic();
     if (opts.shadows) {
       this.traverse((o) => {
-        if ((o as THREE.Mesh).isMesh && !(o as THREE.Mesh).material.hasOwnProperty('uniforms')) {
-          const m = (o as THREE.Mesh).material as THREE.Material;
-          if (!m.transparent) o.castShadow = true;
-        }
+        const mesh = o as THREE.Mesh;
+        if (!mesh.isMesh) return;
+        const m = (Array.isArray(mesh.material) ? mesh.material[0] : mesh.material) as THREE.Material & { isMeshStandardMaterial?: boolean };
+        if (m.isMeshStandardMaterial && !m.transparent) mesh.castShadow = true;
       });
+    }
+  }
+
+  /** Merge non-animated single-material body parts by material to cut draw calls. */
+  private mergeStatic(): void {
+    const excluded = new Set<THREE.Object3D>([...this.flames, ...this.fins]);
+    if (this.wingPivot) excluded.add(this.wingPivot);
+    const groups = new Map<THREE.Material, THREE.Mesh[]>();
+    for (const child of [...this.bodyPivot.children]) {
+      const mesh = child as THREE.Mesh;
+      if (!mesh.isMesh || excluded.has(mesh) || Array.isArray(mesh.material)) continue;
+      const arr = groups.get(mesh.material) ?? [];
+      arr.push(mesh);
+      groups.set(mesh.material, arr);
+    }
+    for (const [mat, meshes] of groups) {
+      if (meshes.length < 2) continue;
+      const geos = meshes.map((m) => {
+        m.updateMatrix();
+        const g = m.geometry.clone();
+        g.applyMatrix4(m.matrix);
+        return g;
+      });
+      const merged = this.track(mergeGeos(geos));
+      for (const m of meshes) this.bodyPivot.remove(m);
+      const out = new THREE.Mesh(merged, mat);
+      out.renderOrder = meshes[0].renderOrder;
+      this.bodyPivot.add(out);
     }
   }
 
