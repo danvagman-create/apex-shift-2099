@@ -118,7 +118,8 @@ export class Game {
       else if (this.input.consume('restart') && this.race.phase !== 'done') this.restartRace();
       this.race.update(dt);
     } else if (this.state === 'paused' || this.state === 'results') {
-      this.input.update(dt);
+      if (this.state === 'results' && this.race) this.race.update(dt);
+      else this.input.update(dt);
       this.handleMenuNav();
       if (this.state === 'paused' && this.input.consume('pause')) this.resume();
     } else if (this.state !== 'loading') {

@@ -15,6 +15,7 @@ await page.goto(`http://localhost:5173/?quality=${quality}&race=${track}&at=${at
 await page.waitForFunction(() => window.__game && window.__game.state === 'race', null, { polling: 500 });
 // hold throttle and let N frames run
 await page.keyboard.down('KeyW');
+for (const k of (process.env.KEYS ?? '').split(',').filter(Boolean)) await page.keyboard.down(k);
 const start = await page.evaluate(() => window.__game.race.frameCount ?? 0);
 await page.waitForFunction((n) => (window.__game.race.frameCount ?? 0) >= n, +start + +frames, { polling: 500 });
 const info = await page.evaluate(() => { const r = window.__game.race; const p = r.session.player.physics; return { kmh: p.speedKmh.toFixed(0), s: p.proj.s.toFixed(0), stats: window.__game.ctx.stats() }; });
